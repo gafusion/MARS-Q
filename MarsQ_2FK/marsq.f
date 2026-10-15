@@ -18148,7 +18148,7 @@ C        TO BE ADDED LATER
          CLOSE(99)
          ZTEMP = RPRV(1)
          IF (NEXPV.EQ.1) ROTWE0 = ZTEMP*ZTAUA0 
-         RPRV  = ROTWE0*RPRV/ZTEMP
+         IF (ZTEMP.NE.0.0) RPRV = ROTWE0*RPRV/ZTEMP
          IF (IRAD.EQ.1) THEN
             SR  = CS(1:NRP1)
             SRM = CSM(1:NRP1)
@@ -18174,7 +18174,7 @@ C        TO BE ADDED LATER
          ENDDO
          CLOSE(99)
          ZTEMP = MAXVAL(RPRV)
-         RPRV  = ROTWE0*RPRV/ZTEMP
+         IF (ZTEMP.NE.0.0) RPRV = ROTWE0*RPRV/ZTEMP
          IF (IRAD.EQ.1) THEN
             SR  = CS(1:NRP1)
             SRM = CSM(1:NRP1)
