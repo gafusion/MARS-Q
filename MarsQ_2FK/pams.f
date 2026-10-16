@@ -171,8 +171,8 @@ C----------------------------------------------------------------------
 C
 C..LOCAL VARIABLES
 C
-         LOGICAL CINVEC
-         INTEGER IK
+         LOGICAL CINVEC,GLOBAL_CSC
+         INTEGER IK,GLOBAL_NORM
 C
 C     SET DIMENSIONS OF MATRICES
 C
@@ -225,6 +225,38 @@ C
      $                                                   )             
 
 C                                                                       
+C
+C     Optional full-matrix forced-response solve. Form the identical native
+C     RHS before any block elimination; A/H are already shifted caller views.
+      CALL PAMS_GLOBAL_REQUESTED(GLOBAL_CSC)
+      IF (GLOBAL_CSC) THEN
+         IF (NCASE.NE.2.OR.ALAM.NE.(1.D0,0.D0)) THEN
+            ERROR STOP 'Global PAMS backend requires steady NCASE=2'
+         ENDIF
+         CALL GET_INORMSOL(GLOBAL_NORM)
+         IF (GLOBAL_NORM.NE.0) THEN
+            ERROR STOP 'Global PAMS backend requires INORMSOL=0'
+         ENDIF
+         NIT=1
+         NONCON=0
+         CALL UBXRHS(
+     $             MD,MDY,ND,NXC,NYC,NCASE,NITMAX
+     $            ,EPSPAM,EPSDET
+     $            ,AL0,ALAM,ALNORM,NONCON
+     $            , A, B, C, D, E, F, G, H
+     $            ,DX,DY, X, Y
+     $            ,DIX,DIY,R,RY
+     $            ,BT1,BTY1,CTE1,CTY1,DT1,DTY1,SC1,SCY1
+     $            ,BT2,BTY2,CTE2,CTY2,DT2,DTY2,SC2,SCY2
+     $            ,XOLD,YOLD,XPIVOT,YPIVOT
+     $            ,TMP1,TMP2,TMPY1,TMPY2 )
+         CALL PAMS_GLOBAL_SOLVE(MD,MDY,ND,A,B,C,D,E,F,G,H,
+     $                          DX,DY,X,Y)
+         NXDEV=0
+         NYDEV=0
+         NONCON=0
+         RETURN
+      ENDIF
 C
 C     3. REDUCTION FOR Y
 C

@@ -1,0 +1,44 @@
+         SUBROUTINE MUBMAT(
+     $             MD,MDY,ND,NXC,NYC,NCASE,NITMAX
+     $            ,EPSPAM,EPSDET
+     $            ,AL0,ALAM,ALNORM,NONCON
+     $            , A, B, C, D, E, F, G, H
+     $            ,DX,DY, X, Y
+     $            ,DIX,DIY,R,RY
+     $            ,BT1,BTY1,CTE1,CTY1,DT1,DTY1,SC1,SCY1
+     $            ,BT2,BTY2,CTE2,CTY2,DT2,DTY2,SC2,SCY2
+     $            ,XOLD,YOLD,XPIVOT,YPIVOT
+     $            ,TMP1,TMP2,TMPY1,TMPY2
+     $                                                    )
+      USE MANUFACTURED_FORCE
+      IMPLICIT LOGICAL (A-Z)
+         INTEGER   MD,ND,MDY,NXC,NYC,NCASE,NITMAX
+         REAL*8      EPSPAM,EPSDET
+         COMPLEX*16   AL0,ALAM,ALNORM
+         INTEGER   NONCON
+         COMPLEX*16   A(MD,MD,ND+2),B(MD,MD,ND+3),C(MD,MD,ND+2)
+         COMPLEX*16   D(MDY,MDY,ND+2),E(MD,MDY,ND+2),F(MDY,MD,ND+2)
+         COMPLEX*16   G(MDY,MD,ND+2),H(MD,MDY,ND+2)
+         COMPLEX*16   DX(MD,ND+1),DY(MDY,ND+1)
+         COMPLEX*16   X(MD,ND+1),Y(MDY,ND+1)
+         COMPLEX*16   DIX(MD,ND+1),DIY(MDY,ND)
+         COMPLEX*16   R(MD,ND+1),RY(MDY,ND)
+         COMPLEX*16   BT1(MD,MD),BTY1(MD,MD),CTE1(MD,MD),CTY1(MD,MDY)
+         COMPLEX*16   DT1(MD),DTY1(MDY)
+         COMPLEX*16   SC1(MD,2*MD+1),SCY1(MDY,2*MDY+1)
+         COMPLEX*16   BT2(MD,MD),BTY2(MD,MD),CTE2(MD,MD),CTY2(MD,MDY)
+         COMPLEX*16   DT2(MD),DTY2(MDY)
+         COMPLEX*16   SC2(MD,2*MD+1),SCY2(MDY,2*MDY+1)
+         COMPLEX*16   XOLD(MD,ND+1),YOLD(MDY,ND)
+         COMPLEX*16   XPIVOT(MD),YPIVOT(MDY)
+         COMPLEX*16   TMP1(MD),TMP2(MD),TMPY1(MDY),TMPY2(MDY)
+      IF (NCASE.NE.2) STOP 10
+      IF (.NOT.ALLOCATED(RHS_X).OR..NOT.ALLOCATED(RHS_Y)) STOP 12
+      IF (SIZE(RHS_X,1).NE.MD.OR.SIZE(RHS_X,2).NE.ND+1) STOP 13
+      IF (SIZE(RHS_Y,1).NE.MDY.OR.SIZE(RHS_Y,2).NE.ND) STOP 14
+      IF (ALAM.NE.(1.D0,0.D0)) STOP 11
+      CALLS=CALLS+1
+      R=RHS_X
+      RY=RHS_Y
+      RETURN
+      END

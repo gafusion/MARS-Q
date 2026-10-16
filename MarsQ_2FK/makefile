@@ -15,9 +15,20 @@ SRCS_LSODE = daxpy.f   dcopy.f  dewset.f  dgbsl.f  dgesl.f \
              dsrcom.f  dumach.f  idamax.f  ixsav.f   makefile  xsetf.f
 
 
+# Optional global forced-response solver; the default has no new dependency.
+PAMS_CSC ?= 0
+PAMS_CSC_SOURCE = pams_global_stub.f90
+ifeq ($(PAMS_CSC),1)
+PAMS_CSC_SOURCE = pams_global_csc.f90
+PAMS_CSC_FLAGS = -I$(FORTSPARSE_PREFIX)/include
+PAMS_CSC_LIBS = $(FORTSPARSE_PREFIX)/lib/libfortsparse.a -ldl -lrt
+# Set FORTSPARSE_LIBS when a static dependency needs additional platform libraries.
+PAMS_CSC_LIBS += $(FORTSPARSE_LIBS)
+endif
+
 #SRCS =   $(DIR_LSODE $(SRC_LSODE))                   \
 
-SRCS =   ./lsode/*.f    \
+SRCS =   $(PAMS_CSC_SOURCE) ./lsode/*.f    \
          dimensim.f globalm.f gijlm.f ran_modm.f  \
          feedbackm.f   gvacuumm.f  rcomdm.f \
          convolcofm.f  resmatm.f kineticm.f torquem.f \
@@ -59,6 +70,9 @@ F95 = mpif90
 F95FLAGS = -O1 -r8 -openmp
 #LDFLAGS =
 
+INCDIR += $(PAMS_CSC_FLAGS)
+LIBS += $(PAMS_CSC_LIBS)
+
 all: $(PROG)
 
 $(PROG): $(OBJS)
@@ -76,9 +90,9 @@ tar:
 .SUFFIXES: $(SUFFIXES) .f
 
 .f90.o:
-	$(F95) $(F95FLAGS) -c $<
+	$(F95) $(F95FLAGS) $(PAMS_CSC_FLAGS) -c $<
 
 .f.o:
-	$(F95) $(F95FLAGS) -c $<
+	$(F95) $(F95FLAGS) $(PAMS_CSC_FLAGS) -c $<
 
 
