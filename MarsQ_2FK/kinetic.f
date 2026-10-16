@@ -6875,11 +6875,13 @@ C     FIND SLAM0 FOR PASSING PARTICLES
                      J = J+1
                      IF (J.LT.NN) GOTO 100
                   ENDIF
-                  IF (J.GT.2.AND.J.LT.NN-1) THEN
+                  IF (J.LT.NN-1) THEN
                      LAM00 = (LAMM(J)+LAMM(J+1))*0.5
                      CALL SPLINE1DR(RTMP1,LAM0,RTMP,LAM00,
      &                    ZOMEGABP(JS,:,KGRID),LAMM,NN-1,LAMTMP)
-                     SLAM0(L,KP) = LAM0
+C                    DO NOT ADD AN ENDPOINT LOGARITHMIC SINGULARITY.
+                     IF (J.NE.1.OR.ZOMEGABP(JS,1,KGRID).NE.RTMP)
+     &                  SLAM0(L,KP) = LAM0
                   ENDIF
                ENDDO
             ENDIF
@@ -6901,17 +6903,18 @@ C     BOUNCE FOR RL.NE.0 AND PRECESSION FOR RL=0
                   RTMP =-(RNTOR*OMEGAE0(JS,KGRID)-DREAL(OMEGA))/
      &                   RL/SQRT(2.*EPSALPHA(JS,KGRID,KP)/
      &                   ESPECIES_M(KP)*ESPECIES_M(1))
-                  J = 1
+                  J = 2
  110              IF ((ZOMEGABT(JS,J,KGRID)-RTMP)*
      &                (ZOMEGABT(JS,J+1,KGRID)-RTMP).GT.0.) THEN
                      J = J+1
                      IF (J.LT.NN) GOTO 110
                   ENDIF
-                  IF (J.GT.2.AND.J.LT.NN-1) THEN
+                  IF (J.LT.NN) THEN
                      LAM00 = (LAMM(J)+LAMM(J+1))*0.5
                      CALL SPLINE1DR(RTMP1,LAM0,RTMP,LAM00,
      &                    ZOMEGABT(JS,2:NN,KGRID),LAMM(2),NN-1,LAMTMP)
-                     SLAM0(L,KP) = LAM0
+                     IF (J.NE.NN-1.OR.ZOMEGABT(JS,NN,KGRID).NE.RTMP)
+     &                  SLAM0(L,KP) = LAM0
                   ENDIF
                ENDIF
 
@@ -6920,17 +6923,18 @@ C     BOUNCE FOR RL.NE.0 AND PRECESSION FOR RL=0
                   RTMP =-(RNTOR*OMEGAE0(JS,KGRID)-DREAL(OMEGA))*
      &                   OMEGACI0*ESPECIES_Z(KP)/(RNTOR*B0K*
      &                   ESPECIES_Z(1)*EPSALPHA(JS,KGRID,KP))
-                  J = 1
+                  J = 2
  120              IF ((ZOMEGADT(JS,J,KGRID)-RTMP)*
      &                (ZOMEGADT(JS,J+1,KGRID)-RTMP).GT.0.) THEN
                      J = J+1
                      IF (J.LT.NN) GOTO 120
                   ENDIF
-                  IF (J.GT.2.AND.J.LT.NN-1) THEN
+                  IF (J.LT.NN) THEN
                      LAM00 = (LAMM(J)+LAMM(J+1))*0.5
                      CALL SPLINE1DR(RTMP1,LAM0,RTMP/1000.,LAM00,
      &               ZOMEGADT(JS,2:NN,KGRID)/1000.,LAMM(2),NN-1,LAMTMP)
-                     SLAM0(L,KP) = LAM0
+                     IF (J.NE.NN-1.OR.ZOMEGADT(JS,NN,KGRID).NE.RTMP)
+     &                  SLAM0(L,KP) = LAM0
                   ENDIF
 
                   IF (JS.EQ.JS0.AND.KGRID.EQ.1.AND.KCHECK.EQ.2) THEN
@@ -6954,17 +6958,20 @@ C     FIND SLAMD0 FOR PRECESSIONAL RESONANCE OF TRAPPED PARTICLES
          IF (ABS(WFUN(JS,KGRID)).GE.1.0E-13) THEN
          NN     = 2*NLAMK0(JS,KGRID)
 
-         J=1
+C        THE SPLINE USES LAMM(2:NN), INCLUDING ITS END INTERVALS.
+         J=2
  130     IF (ZOMEGADT(JS,J,KGRID)*ZOMEGADT(JS,J+1,KGRID).GT.0.0) THEN
             J=J+1
             IF (J.LT.NN) GOTO 130
          ENDIF
-         IF (J.GT.2.AND.J.LT.NN-1) THEN
+         IF (J.LT.NN) THEN
             LAM00 = (LAMM(J)+LAMM(J+1))*0.5
             CALL SPLINE1DR(RTMP1,LAM0,0.0,LAM00,
      &           ZOMEGADT(JS,2:NN,KGRID)/1000.,LAMM(2),NN-1,LAMTMP)
-            SLAMD0 = LAM0
-            DPRM   = RTMP1*1000.
+            IF (J.NE.NN-1.OR.ZOMEGADT(JS,NN,KGRID).NE.0.0) THEN
+               SLAMD0 = LAM0
+               DPRM   = RTMP1*1000.
+            ENDIF
          ENDIF
          ENDIF
       ENDIF
