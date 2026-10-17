@@ -81,4 +81,8 @@ tar:
 .f.o:
 	$(F95) $(F95FLAGS) -c $<
 
+.PHONY: test-thermal-species
+test-thermal-species:
+	python3 ../tests/test_thermal_species.py
+
 
