@@ -8969,7 +8969,7 @@ C
             DPDP0 = FCCCC0(CPPR(1),CPPR(2),CPPR(3),CPPR(4),
      ,                     CSM(1),CSM(2),CSM(3),CSM(4),RC0P)
             T0    = FCCCC0(TMF(1),TMF(2),TMF(3),TMF(4),
-     ,                     CSM(1),CSM(2),CSM(3),TMF(4),RC0P)
+     ,                     CSM(1),CSM(2),CSM(3),CSM(4),RC0P)
             DTTP0 = FCCCC0(TTP(1),TTP(2),TTP(3),TTP(4),
      ,                     CSM(1),CSM(2),CSM(3),CSM(4),RC0P)
 C
