@@ -13,6 +13,7 @@
      &                                      DEPSCDPSI2,
      &                                      DEPSALPHADPSI,DEPSALPHADPSI2
        REAL*8,DIMENSION(:,:,:),ALLOCATABLE::ZOMEGABP,ZOMEGABT,ZOMEGADT,
+     &                                      ZOMEGADP,
      &                                      TPSI0,TPSI0DPSI,TPSI0DLAM,
      &                                      HPSI0,HPSI0DPSI,HPSI0DLAM,
      &                                      HATJ0
