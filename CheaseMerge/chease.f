@@ -25196,9 +25196,9 @@ C
 C     LAST DIAGONAL ELEMENT
 C
          IKD = (N - 1) * MP + 1
-         IJ  = IKD - MP
+C        AD HOLDS EPS TIMES THIS PIVOT'S OWN DIAGONAL BEFORE ELIMINATION
 C
-         IF (ABS(A(IKD)) .LT. ABS(A(IJ))*EPS) THEN
+         IF (ABS(A(IKD)) .LT. AD) THEN
             NSING = -1
          ENDIF
 C
