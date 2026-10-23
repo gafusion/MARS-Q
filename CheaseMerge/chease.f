@@ -16506,7 +16506,7 @@ C
      &                            (.5*(TTP(J7) + TTP(J7P1)) - 
      &                            (D2TTP(J7) + D2TTP(J7P1)) *
 CMSC     &                            (PSIISO(J7P1) - PSIISO(J7))**2 / 24.)
-     &                            (PSIISO(J7P1) - PSIISO(J7))**3 / 48.)
+     &                            (PSIISO(J7P1) - PSIISO(J7))**2 / 24.)
 CMSC            WRITE(6,'("J8,PSIISO,TMF,TTP,D2TTP",I5,1p4e12.4)')J8,
 CMSC     &           PSIISO(J8),TMF(J8),TTP(J8),D2TTP(J8)
 C
@@ -16524,10 +16524,10 @@ C
 C
             TMF(J8P1) = TMF(J8) + (PSIISO(J8P1) - PSIISO(J8)) *
 CMSC     &                            (.5*(TTP(J8) + TTP(J8P1)) -
-     &                            (.5*(TTP(J8) + TTP(J8P1)) +
+     &                            (.5*(TTP(J8) + TTP(J8P1)) -
      &                             (D2TTP(J8) + D2TTP(J8P1)) *
 CMSC     &                             (PSIISO(J8P1) - PSIISO(J8))**2 / 24.)
-     &                             (PSIISO(J8P1) - PSIISO(J8))**3 / 48.)
+     &                             (PSIISO(J8P1) - PSIISO(J8))**2 / 24.)
 C
     8       CONTINUE
 C
