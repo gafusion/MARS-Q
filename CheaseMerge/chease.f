@@ -3060,6 +3060,19 @@ C     PPLIMIT = X*(0.25 + X*X)
       PPLIMIT = ABS(PPLIMIT)
       RETURN
       END
+C*DECK CHEASE_GAUSS_CHECK
+      SUBROUTINE CHEASE_GAUSS_CHECK(KS,KT,MS,MT,IERR)
+      IMPLICIT NONE
+      INTEGER KS,KT,MS,MT,IERR
+      IERR=1
+C     Rule1 is trapezoidal and uses two actual storage locations.
+      IF (.NOT.((KS.GE.1.AND.KS.LE.10).OR.KS.EQ.20)) RETURN
+      IF (.NOT.((KT.GE.1.AND.KT.LE.10).OR.KT.EQ.20)) RETURN
+      IERR=2
+      IF (MAX(2,KS).GT.MS.OR.MAX(2,KT).GT.MT) RETURN
+      IERR=0
+      RETURN
+      END
 C*DECK C2S03
 C*CALL PROCESS
          SUBROUTINE INITIA
@@ -3088,6 +3101,20 @@ C
 C
 C---*----*----*----*----*----*----*----*----*----*----*----*----*----*
 C
+C     Reject unsafe or undefined integration rules before any local write.
+         CALL CHEASE_GAUSS_CHECK(NSGAUS,NTGAUS,NPSGS,NPTGS,IERR)
+         IF (IERR.NE.0) THEN
+            WRITE(0,*) 'Invalid Gaussian order/capacity: ',
+     &                 NSGAUS,NTGAUS,NPSGS,NPTGS
+            STOP 1
+         ENDIF
+C
+C     The trapezoidal rule samples sigma=0; SETUPA divides by sigma.
+         IF (NSGAUS.EQ.1) THEN
+            WRITE(0,*) 'NSGAUS=1 is undefined at the magnetic axis; ',
+     &                 'choose an interior Gaussian rule'
+            STOP 1
+         ENDIF
          CALL RESETI(MPLA1,16,0)
          CALL RESETI(MPLA2,16,0)
          CALL RESETI(MPLA3,16,0)
@@ -3199,6 +3226,8 @@ C
 C
          CALL GAUSS(NSGAUS,ZRACS,ZWGTS)
          CALL GAUSS(NTGAUS,ZRACT,ZWGTT)
+C     Rule1 is trapezoidal and GAUSS updates its effective order to2.
+         NWGAUS = NSGAUS * NTGAUS
 C
          DO 6 J6=1,NSGAUS
 C
