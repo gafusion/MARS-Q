@@ -2888,6 +2888,26 @@ C     SMOOTH EQUILIBRIUM B FIELD FOR BAD EQUILIBRIUM
       ENDDO
       ENDIF
 
+C     KEEP THE DRIFT GEOMETRY CONSISTENT WITH THE FILTERED FIELD.
+C     BPK IS USED BELOW FOR THE RADIAL AND POLOIDAL DRIFT DERIVATIVES.
+C     It must be rebuilt after BK is filtered; retaining the pre-filter
+C     BPK mixes two different equilibrium spectra in the same operator.
+      DO JS=2,NRP1
+         DO J=1,NCHI
+            BPK(JS,J,1)=RJA(JS,J)**2*BK(JS,J,1)/G22L(JS,J)/
+     &                  DPSIDS(JS)**2
+         ENDDO
+      ENDDO
+      DO JS=1,NR
+         DO J=1,NCHI
+            BPK(JS,J,2)=RJAM(JS,J)**2*BK(JS,J,2)/G22LM(JS,J)/
+     &                  DPSIDSM(JS)**2
+         ENDDO
+      ENDDO
+      DO J=1,NCHI
+         BPK(1,J,1)=BPK(1,J,2)
+      ENDDO
+
       DO J=1,NCHI
          DO JS=1,NRP1
             HK(JS,J,1)=B0K/BK(JS,J,1)
