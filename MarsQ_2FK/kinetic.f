@@ -2757,16 +2757,18 @@ C     ENDDO
          
          OPEN(HARMOFILE, FILE='HARMONIC.IN',FORM='FORMATTED')
          READ (HARMOFILE,*) HARMONUM
-         IF (ABS(HARMONUM).LT.100.0) THEN
-            MLMAX=HARMONUM
-            DEALLOCATE(RLM)
-            ALLOCATE(RLM(MLMAX))
-            DO J=1,MLMAX
-               READ (HARMOFILE,*) HARMONUM 
-               RLM(J)=HARMONUM
-            ENDDO
-            PRINT *,'RLM(1)=',RLM(1),'RLM(MLMAX)=',RLM(MLMAX)
+         IF (HARMONUM.LT.1) THEN
+            WRITE(*,*) 'KGETRLM: HARMONIC.IN COUNT < 1'
+            STOP 1
          ENDIF
+         MLMAX=HARMONUM
+         DEALLOCATE(RLM)
+         ALLOCATE(RLM(MLMAX))
+         DO J=1,MLMAX
+            READ (HARMOFILE,*) HARMONUM
+            RLM(J)=HARMONUM
+         ENDDO
+         PRINT *,'RLM(1)=',RLM(1),'RLM(MLMAX)=',RLM(MLMAX)
          CLOSE (HARMOFILE)
       ENDIF
 
