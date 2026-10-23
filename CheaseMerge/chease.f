@@ -6162,7 +6162,10 @@ C
 C SMOOTH THE NEW SOLUTION WITH BICUBIC SPLINES AND COMPUTE
 C DERIVATIVES ON THE (SIGMA; THETA) GRID
 C
-            IF (NSMOOTH.EQ.1) CALL SMOOTH
+C NIN restart interpolation supplies values only. Reconstruct its
+C derivative DOFs even when smoothing is disabled. Normal NOPT=0 mesh
+C remaps retain the native optional smoothing policy.
+            IF (NSMOOTH.EQ.1.OR.NOPT.EQ.1) CALL SMOOTH
 C
             DO 7 J7=1,NT
 C
