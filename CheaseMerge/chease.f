@@ -8193,7 +8193,7 @@ C
             CPSI(4*NUPDWN(J11)-3) = CPSICL(4*J11-3)
             CPSI(4*NUPDWN(J11)-2) = CPSICL(4*J11-2)
             CPSI(4*NUPDWN(J11)-1) = CPSICL(4*J11-1)
-            CPSI(4*NUPDWN(J11)-1) = CPSICL(4*J11)
+            CPSI(4*NUPDWN(J11)) = CPSICL(4*J11)
 C
  11      CONTINUE
 C
