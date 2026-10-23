@@ -332,6 +332,8 @@ C     THE FILE CHANEL FOR OUTPUT KINETIC QUANTITY IN 2D PLOT
       IF (ISMPIRUN.EQ.0) THEN
       ALLOCATE( FREQKSURF(NRP1,7,NCHI),
      &           POSITIONKAI(NRP1,NCHI) )
+C     Surfaces skipped by the kinetic loop have no diagnostic value.
+      POSITIONKAI = 0.0D0
       ENDIF
 
 C     NUMBER OF INTEGRATION POINTS ALONG CHI
