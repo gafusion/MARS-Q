@@ -1353,6 +1353,7 @@ C
          INCLUDE 'COMESH.inc'
          INCLUDE 'COMNUM.inc'
          INCLUDE 'COMPHY.inc'
+         INCLUDE 'COMEQD.inc'
 C
          DIMENSION ILIMIT(140)
 C
@@ -1548,6 +1549,9 @@ C
          IF (NIDEAL .EQ. 4) THEN
             IF (NPSI*(NMGAUS+2) .GT. 2*NPISO)  ILIMIT(46)= 1
          ENDIF
+C        EQDSPSI(NPISO,NPISO) HOLDS THE NRBOX X NZBOX PSI BOX
+         IF (NRBOX  .GT. NPISO) ILIMIT(48)= 1
+         IF (NZBOX  .GT. NPISO) ILIMIT(50)= 1
 C
 ***********************************************************************
 *                                                                     *
@@ -1631,6 +1635,8 @@ C
              IF (ILIMIT(46).EQ.1) WRITE(*,120) 'NPSI*(NMGAUS+2)',
      &                            '2*NPISO','NPISO',NPSI*(NMGAUS+2),
      $                                          2*NPISO
+             IF (ILIMIT(48).EQ.1) WRITE(*,129) 'NRBOX',NRBOX,NPISO
+             IF (ILIMIT(50).EQ.1) WRITE(*,129) 'NZBOX',NZBOX,NPISO
 C
              IF (ILIMIT(60).EQ.1)  WRITE(*,160) 'NANAL '
              IF (ILIMIT(62).EQ.1)  WRITE(*,160) 'NBAL  '
@@ -1673,6 +1679,8 @@ C
   120    FORMAT(A,' .GT. ',A,'        RECOMPILE WITH LARGER ',A,' ',2I5)
   121    FORMAT(A,' .GT. ',A,'        RUN AGAIN WITH SMALLER ',A,' ',I5)
   128    FORMAT(A,' .GT. ',A,'NPPSI+1 RECOMPILE WITH LARGER ',A,' ',2I5)
+  129    FORMAT(A,' =',I6,' OUT OF RANGE, IT HAS TO BE .LE. NPISO =',I6,
+     $          ' (RUN AGAIN WITH SMALLER VALUE)')
   158    FORMAT('WRONG VALUE FOR ',A,' IT HAS TO BE -2, -1, 0 OR 1')
   160    FORMAT('WRONG VALUE FOR ',A,' IT HAS TO BE 0 OR 1')
   162    FORMAT('WRONG VALUE FOR ',A,' IT HAS TO BE 1 OR 2')
