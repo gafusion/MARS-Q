@@ -4348,9 +4348,13 @@ C     SAVE ALL FREQUNCIES INTO A FILE
      &                   *ALPHAA3(JS,1,3)/ALPHAA1(JS,1,3)
          AOMEGADINSURF = AOMEGADIN*ESPECIES_TEM(JS,1,1)*B0K/OMEGACI0
          LAMH = 0.
-         DO L=1,MLMAX
-            IF (ABS(RLM(L)).LT.0.1) LAMH = SLAM0(L,3)
-         ENDDO
+C        FREQK(:,9) IS THE HOT-ION L=0 RESONANCE DIAGNOSTIC.  A
+C        TWO-SPECIES THERMAL RUN HAS NO THIRD SLAM0 COLUMN.
+         IF (NSPECIES.GE.3) THEN
+            DO L=1,MLMAX
+               IF (ABS(RLM(L)).LT.0.1) LAMH = SLAM0(L,3)
+            ENDDO
+         ENDIF
 
          FREQK(JS,1)  = AOMEGABPN
          FREQK(JS,2)  = AOMEGABTN
