@@ -829,7 +829,8 @@ C*********************************************************************
       
       qwthe=knc*qwsTi        ! poloidal rotation
       if (KROTWE.eq.4) then
-         qwe=q*r_prof(:,12)
+! PROFWE is the rad/s E x B frequency, the quantity of the force balance below
+         qwe=r_prof(:,12)
       else
          qwe=w_phi-qwthe+qwsi   ! E * B rotation
       endif
