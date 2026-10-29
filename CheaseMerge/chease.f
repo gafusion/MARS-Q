@@ -27108,25 +27108,8 @@ C     ONLY ON RELATIVE POSITION OF ZCHI(I) WITH RESPECT TO CHIISO
 C
          IGCHISO = NMGAUS*NT1
          CALL GCHI(KPSI)
-         DO I=1,INCHI
-           ICHISO = ISRCHFGE(IGCHISO,CHIISO,1,ZCHI(I)) - 1
-C
-           IF (ICHISO .LT. 1) THEN
-             ICHISO = 1
-           ELSE IF (ICHISO .GT. IGCHISO) THEN
-             ICHISO = IGCHISO
-           ENDIF
-           ICHIISO(I) = ICHISO
-C
-           ZH = CHIISO(ICHISO+1) - CHIISO(ICHISO)
-           ZA(I) = (CHIISO(ICHISO+1) - ZCHI(I)) / ZH
-           ZB(I) = (ZCHI(I) - CHIISO(ICHISO)) / ZH
-           ZC(I) = (ZA(I) + 1) * (ZA(I) - 1) * ZH * 
-     *       (CHIISO(ICHISO+1) - ZCHI(I)) / 6.
-           ZD(I) = (ZB(I) + 1) * (ZB(I) - 1) * ZH * 
-     *       (ZCHI(I) - CHIISO(ICHISO)) / 6.
-C
-         ENDDO
+         CALL SPLCHC(CHIISO,IGCHISO,RC2PI,ZCHI,INCHI,
+     +     ICHIISO,ZA,ZB,ZC,ZD)
 C
 C     3. FOR EACH ARRAY: COMPUTE VALUES ON ZCHI USING A PERIODIC
 C     CUBIC SPLINE FIT AND COMPUTE FULL FOURIER TRANSFORM
@@ -27194,6 +27177,46 @@ C
       END
 C
 
+         SUBROUTINE SPLCHC(PCHI,KCHI,PPERI,PEQCHI,KNFFT,KINDEX,
+     +                      PA,PB,PC,PD)
+C        ##########################################################
+C     PREPARE PERIODIC SPLINE WEIGHTS FOR TARGETS IN ONE PERIOD.
+C     THE CLOSING INTERVAL ENDS AT PCHI(1)+PPERI, NOT PCHI(KCHI+1).
+C
+         IMPLICIT NONE
+         INTEGER, INTENT(IN) :: KCHI,KNFFT
+         REAL, INTENT(IN) :: PCHI(KCHI),PPERI,PEQCHI(KNFFT)
+         INTEGER, INTENT(OUT) :: KINDEX(KNFFT)
+         REAL, INTENT(OUT) :: PA(KNFFT),PB(KNFFT),PC(KNFFT),
+     +     PD(KNFFT)
+         INTEGER I,K,ISRCHFGE
+         REAL ZCHI,ZRIGHT,ZH
+C
+         DO I=1,KNFFT
+           ZCHI = PEQCHI(I)
+           K = ISRCHFGE(KCHI,PCHI,1,ZCHI) - 1
+           IF (K .LT. 1) THEN
+             K = KCHI
+             ZCHI = ZCHI + PPERI
+           ENDIF
+           KINDEX(I) = K
+           IF (K .EQ. KCHI) THEN
+             ZRIGHT = PCHI(1) + PPERI
+           ELSE
+             ZRIGHT = PCHI(K+1)
+           ENDIF
+           ZH = ZRIGHT - PCHI(K)
+           PA(I) = (ZRIGHT - ZCHI) / ZH
+           PB(I) = (ZCHI - PCHI(K)) / ZH
+           PC(I) = (PA(I) + 1) * (PA(I) - 1) * ZH *
+     +       (ZRIGHT - ZCHI) / 6.
+           PD(I) = (PB(I) + 1) * (PB(I) - 1) * ZH *
+     +       (ZCHI - PCHI(K)) / 6.
+         ENDDO
+C
+         RETURN
+         END
+C
          SUBROUTINE SPLCHI(PCHI,PFUN,KCHI,PPERI,PD2FUN,PWORK,PEQFUN,
      +                      KNFFT,KINDEX,PA,PB,PC,PD)
 C        ##############################################################
@@ -27216,8 +27239,10 @@ C
      +     PWORK(1,3))
          DO 10 I=1,KNFFT
            K = KINDEX(I)
-           PEQFUN(I) = PA(I)*PFUN(K)   + PB(I)*PFUN(K+1) +
-     +                  PC(I)*PD2FUN(K) + PD(I)*PD2FUN(K+1)
+           KRIGHT = K + 1
+           IF (K .EQ. KCHI) KRIGHT = 1
+           PEQFUN(I) = PA(I)*PFUN(K)   + PB(I)*PFUN(KRIGHT) +
+     +                  PC(I)*PD2FUN(K) + PD(I)*PD2FUN(KRIGHT)
  10   CONTINUE
 C
       RETURN
