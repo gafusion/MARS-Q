@@ -61,6 +61,8 @@ C****************************************************************
       real,allocatable::dwds(:),q(:),gg(:,:,:),dsdpsi(:),dBav(:)
       real,allocatable::dBds(:,:),dBdc(:,:),chiH(:,:),dphiH(:,:)
       real,allocatable::Jac(:,:),Beq(:,:),eps(:),tmpB(:),tmpgg(:,:)
+      real,allocatable::dm(:,:,:),bth(:),cp(:),pp(:)
+      real qdev
       real min_t,max_t,ieps,co,mui
       complex,allocatable::bmns(:,:,:)
       real,allocatable::tmpbmn(:),tmpbmn2(:)
@@ -114,6 +116,24 @@ C     print*, 'R_c=',R_axis,'co=',co
             allocate(Beq(NP,n_chi))
        call cal_metric(NP,n_chi,s,chi,R_mars,Z_mars,FF,dpsids,q,
      .                  Jac,gg,Beq,dBds,dBdc)
+!---------------- div(xi_perp) metric, B^theta and mu0 p'(psi) psi'(s)
+!                 for the Hamada-gauge parallel displacement
+            allocate(dm(NP,n_chi,7))
+            allocate(bth(NP))
+            allocate(cp(NP))
+            allocate(pp(NP))
+       call cal_divmetric(NP,n_chi,s,chi,R_mars,Z_mars,FF,dpsids,
+     .                    Jac,Beq,dm)
+       call get_ppeq(NP,pp)
+       bth=0.0
+       qdev=0.0
+       do i=2,NP
+          bth(i)=n_chi*dpsids(i)/sum(Jac(i,:))
+          qdev=max(qdev,abs(FF(i)*sum(Jac(i,:)/R_mars(i,:)**2)
+     .         /(n_chi*dpsids(i)*q(i))-1.0))
+       end do
+       cp=pp*dpsids
+       print*,'NTV Hamada chart: max|F<J/R^2>/(psi''q)-1| =',qdev
 !---------------- coordinate transform
             allocate(chiH(NP,n_chi))
             allocate(dphiH(NP,n_chi))
@@ -157,11 +177,17 @@ C      print*,'Calculating spectrum...'
           call coord_map(n_chi,chi,NP,chiH,tmpgg)
           gg(:,:,i)=tmpgg
        end do
+       do i=1,7
+          tmpgg=dm(:,:,i)
+          call coord_map(n_chi,chi,NP,chiH,tmpgg)
+          dm(:,:,i)=tmpgg
+       end do
 
        allocate(bmns(2*m_max+1,n_max,NP))
        allocate(dBav(NP))
        call cal_xi_liu(NP,n_chi,chiH,n_phi,dphiH,dBav,
-     .              gg,dBds,dBdc,omega,dwds,m_max,n_max,bmns)
+     .              gg,dBds,dBdc,omega,dwds,m_max,n_max,bmns,
+     .              s,q,Beq,dm,bth,cp)
          bmns=co*bmns
 !           print*,'spec',abs(co*bmns(m_max+2,1,:))
        allocate(tmpbmn(NP))
@@ -258,31 +284,51 @@ C     therefore no need to store it
       deallocate(bmns)
       deallocate(tmpbmn)
       deallocate(tmpbmn2)
+      deallocate(dm,bth,cp,pp)
 
       end subroutine MARS_out
 
       subroutine cal_xi_liu(NP,n_chi,chiH,n_phi,dphiH,dBav,
-     .                    gg,dBds,dBdc,omega,dwds,m_max,n_max,bmn)
+     .                    gg,dBds,dBdc,omega,dwds,m_max,n_max,bmn,
+     .                    s,q,B,dm,bth,cp)
 C****************************************************************
 C           load the plasma displacement Xi
 C           and calculate the spectrum of dB
+C
+C     dB is |B| in perturbed Hamada coordinates
+C       dB = dB_L + lam B.grad B,  dB_L = b.deltaB + xi_perp.grad B,
+C     with deltaB the computed perturbed field (B1U,B2U,B3U),
+C     xi_perp = X1 (e_s)_perp + X2 J B x grad s/B**2 and the
+C     Hamada parallel displacement xi_par = lam B from div xi = 0,
+C       B.grad lam = -d,  d = -dB_L/B - kappa.xi_perp,
+C       lam_k = i d_k (k+nq)/(B^theta ((k+nq)**2+sigma**2)).
+C     Under ideal induction d = div xi_perp and dB_L = -B(d+kappa.xi_perp);
+C     the field form avoids radial derivatives of xi, which break the
+C     near-cancellation in div xi_perp in resistive layers and at the
+C     boundary, where X2U(NRP1) is not defined.
+C     kappa.xi_perp = xi_perp.grad B/B + mu0 p'(psi) psi'(s) X1/B**2
+C     (force balance). The MHD parallel displacement X3 is not used:
+C     it is a fluid velocity component, not the Hamada coordinate gauge.
 C****************************************************************
 !---------------- load displacement
       integer M1,NP1,n,i,j,NP,n_chi,n_phi,k,m_max,n_max
       real gg(NP,n_chi,3),dBds(NP,n_chi),dBdc(NP,n_chi)
+      real s(NP),q(NP),B(NP,n_chi),dm(NP,n_chi,7),bth(NP),cp(NP)
       integer,allocatable::M(:)
       real,allocatable::X1R(:,:),X1I(:,:),X2R(:,:),X2I(:,:)
-      real,allocatable::F3R(:),F3I(:),X3R(:,:),X3I(:,:)
+      real,allocatable::X3R(:,:),X3I(:,:)
+      real,allocatable::B1R(:,:),B1I(:,:),B2R(:,:),B2I(:,:),
+     &                  B3R(:,:),B3I(:,:)
       real,allocatable::F1R(:),F1I(:),F2R(:),F2I(:)
-      real,allocatable::fr(:),fi(:),dphi(:)
-      complex,allocatable::dB(:),XI_chi(:)
+      real,allocatable::fr(:),fi(:),dphi(:),dqds(:)
+      complex,allocatable::dB(:),XI1(:),XI2(:),C1(:),C2(:),C3(:)
+      complex,allocatable::divx(:),gB(:),lam(:),divk(:),dBL(:)
       real htheta,chiH(NP,n_chi),dphiH(NP,n_chi)
       real chi(n_chi)
       real omega(NP),dwds(NP),dBav(NP)
+      real x,sigma,den
       complex bmn(2*m_max+1,n_max,NP)
-      complex,allocatable::X3(:,:)
-      complex alpha1
-      real    alpha2
+      integer kmin
 
        call get_dimensV(M1,NP1,n)
     
@@ -293,23 +339,28 @@ C****************************************************************
        allocate(X2I(NP1,M1))
        allocate(X3R(NP1,M1))
        allocate(X3I(NP1,M1))
-       allocate(X3(NP,n_chi))
+       allocate(B1R(NP1,M1),B1I(NP1,M1),B2R(NP1,M1),B2I(NP1,M1),
+     &          B3R(NP1,M1),B3I(NP1,M1))
 
        call get_disp(M1,NP1,M,X1R,X1I,X2R,X2I,X3R,X3I)
-
-C      call get_alpha(NP,n_chi,X3,alpha1,alpha2)
+       call get_field(M1,NP1,B1R,B1I,B2R,B2I,B3R,B3I)
+       allocate(dqds(NP))
+       call cald_1d(q,NP,s,dqds)
 
        bmn = 0.
-       htheta = 2.*npi/(n_chi-1)
+       ! xgrid() supplies periodic midpoint samples with spacing 2*pi/n_chi.
+       ! The previous n_chi-1 trapezoid used the wrong spacing, omitted the
+       ! periodic closing cell, and leaked a manufactured single Fourier mode.
+       htheta = 2.*npi/n_chi
+       kmin = -(n_chi/2)
 
 !-------------- transform to real space and calculate dB and its spectrum
        allocate(F1R(n_chi))
        allocate(F1I(n_chi))
        allocate(F2R(n_chi))
        allocate(F2I(n_chi))
-       allocate(F3R(n_chi))
-       allocate(F3I(n_chi))
-       allocate(XI_chi(n_chi))
+       allocate(XI1(n_chi),XI2(n_chi),C1(n_chi),C2(n_chi),C3(n_chi))
+       allocate(divx(n_chi),gB(n_chi),lam(n_chi),divk(n_chi),dBL(n_chi))
        allocate(dB(n_chi))
        allocate(fr(M1))
        allocate(fi(M1))
@@ -317,65 +368,84 @@ C      call get_alpha(NP,n_chi,X3,alpha1,alpha2)
 
        do 30 i=2,NP1
 
-C      transform X1,X2,X3 from Fourier space to real space in chi-angle
-C      note that chi is non-unifrom MARS-F chi, corresponding to
-C      uniform theta^H in Hamada coordinate system
+C      transform X1,X2 and B1,B2,B3 from Fourier space to real
+C      space in chi-angle; note that chi is non-unifrom MARS-F chi,
+C      corresponding to uniform theta^H in Hamada coordinate system
        chi=chiH(i,:)
        dphi=dphiH(i,:)
 
        fr=X1R(i,:)
        fi=X1I(i,:) 
        call trans_1d(fr,fi,M1,M,n,n_chi,chi,dphi,F1R,F1I)
+       XI1 = F1R+(0.,1.)*F1I
 
        fr=X2R(i,:)
        fi=X2I(i,:) 
        call trans_1d(fr,fi,M1,M,n,n_chi,chi,dphi,F2R,F2I)
+       XI2 = F2R+(0.,1.)*F2I
 
-       fr=X3R(i,:)
-       fi=X3I(i,:) 
-       call trans_1d(fr,fi,M1,M,n,n_chi,chi,dphi,F3R,F3I)
+       call trans_1d(B1R(i,:),B1I(i,:),M1,M,n,n_chi,chi,dphi,F1R,F1I)
+       C1 = F1R+(0.,1.)*F1I
+       call trans_1d(B2R(i,:),B2I(i,:),M1,M,n,n_chi,chi,dphi,F1R,F1I)
+       C2 = F1R+(0.,1.)*F1I
+       call trans_1d(B3R(i,:),B3I(i,:),M1,M,n,n_chi,chi,dphi,F1R,F1I)
+       C3 = F1R+(0.,1.)*F1I
 
-C      compute X3, ok for both time-stepping & steady-state response
-C      then compute dB=xi dot grad B, w/o Eulerian part
-C      X3(i,:)=1./(alpha1+(0.,1.)*n*omega(i)*alpha2)*( 
-C    &    (alpha1-(0.,1.)*n*omega(i)*(1.-alpha2))*X3(i,:) +
-C    &    F3R + (0.,1.)*F3I + 
-C    &    gg(i,:,2)*dwds(i)*(F1R+(0.,1.)*F1I) )
-       X3(i,:)= F3R + (0.,1.)*F3I 
-       XI_chi = (F1R+(0.,1.)*F1I)*gg(i,:,1)  
-     &        + (F2R+(0.,1.)*F2I)*gg(i,:,2) 
-     &        + X3(i,:)*gg(i,:,3)
-       dB=(F1R+(0.,1.)*F1I)*dBds(i,:)+XI_chi*dBdc(i,:)
+C      xi_perp.grad B
+       gB = XI1*dBds(i,:) + (XI1*gg(i,:,1) + XI2*gg(i,:,2))*dBdc(i,:)
+
+C      dB_L = b.deltaB + xi_perp.grad B with J deltaB^(s,chi,phi) = C1,C2,C3,
+C      b.deltaB = [(psi'/J)(g_schi C1 + g_chichi C2) + F C3]/(J B)
+       dBL = B(i,:)*(-gg(i,:,1)*C1/gg(i,:,3) - dm(i,:,6)*C2/dm(i,:,7)
+     &     + gg(i,:,2)*C3)/dm(i,:,7) + gB
+
+C      d = -dB_L/B - kappa.xi_perp
+       divx = -dBL/B(i,:) - gB/B(i,:) - cp(i)*XI1/B(i,:)**2
+
+C      Hamada gauge B.grad lam = -d on exp(i(k theta + n zeta)),
+C      B.grad = B^theta (d_theta + q d_zeta); Park regularisation sigma
+C      of one radial cell, sigma = |n q'| ds
+       if (i.lt.NP1) then
+          sigma = abs(n*dqds(i))*(s(i+1)-s(i-1))*0.5
+       else
+          sigma = abs(n*dqds(i))*(s(i)-s(i-1))
+       endif
+       do k=1,n_chi
+          divk(k) = 0.
+          do j=1,n_chi
+             divk(k) = divk(k) +
+     &       divx(j)*exp(-(0.,1.)*(kmin+k-1)*(j-.5)*htheta)
+          enddo
+          x = kmin+k-1+n*q(i)
+          den = x**2+sigma**2
+          if (den.gt.0.) then
+             divk(k) = (0.,1.)*divk(k)/n_chi*x/(bth(i)*den)
+          else
+             divk(k) = 0.
+          endif
+       enddo
+       do j=1,n_chi
+          lam(j) = 0.
+          do k=1,n_chi
+             lam(j) = lam(j) +
+     &       divk(k)*exp((0.,1.)*(kmin+k-1)*(j-.5)*htheta)
+          enddo
+       enddo
+
+C      dB = dB_L + lam B.grad B
+       dB = dBL + lam*gg(i,:,3)*dBdc(i,:)
 
 C      compute surface averaged value of abs(dB/B)
 C      to be used to estimate various collisionality regimes
        dBav(i) = sum(abs(dB))/DFLOAT(n_chi)
 
-       if (i.eq.100.and.1.eq.0) then
-          print*,'kliuX3...'
-          print*,alpha1,alpha2,n,omega(i),dwds(i)
-          print*,F1R(1),F1I(1)
-          print*,F1R(n_chi),F1I(n_chi)
-          print*,F2R(1),F2I(1)
-          print*,F2R(n_chi),F2I(n_chi)
-          print*,F3R(1),F3I(1)
-          print*,F3R(n_chi),F3I(n_chi)
-          print*,X3(i,1),X3(i,n_chi)
-          print*,gg(i,1,1),gg(i,n_chi,1)
-          print*,gg(i,1,2),gg(i,n_chi,2)
-          print*,gg(i,1,3),gg(i,n_chi,3)
-          do j=1,n_chi
-             print*,chi(j),dphi(j),gg(i,j,1)
-          enddo
-       endif
-
 C      decompose dB in Fourier space in Hamada coordinate system (V,theta^H,phi^H)
 C      note that transform to Hamada coordinates does not change the toroidal 
 C      mode number n
        do k=-m_max,m_max
-          do j=1,n_chi-1
-             bmn(k+m_max+1,1,i) = bmn(k+m_max+1,1,i) + 
-     &       (dB(j)+dB(j+1))*.5*exp(-(0.,1.)*k*(j-.5)*htheta)
+          do j=1,n_chi
+             bmn(k+m_max+1,1,i) = bmn(k+m_max+1,1,i) +
+     &       dB(j)*exp(-(0.,1.)*k*(j-.5)*htheta)
           enddo
        enddo
 
@@ -383,11 +453,10 @@ C      mode number n
        bmn = bmn*htheta/2./npi
        bmn(:,:,1)=bmn(:,:,2)
 
-C      call set_alpha(NP,n_chi,X3)
-
-       deallocate(M, X1R, X1I, X2R, X2I, X3R, X3I, 
-     &               F1R, F1I, F2R, F2I, F3R, F3I,
-     &           X3, XI_chi, dB, fr, fi, dphi)
+       deallocate(M, X1R, X1I, X2R, X2I, X3R, X3I,
+     &            B1R, B1I, B2R, B2I, B3R, B3I,
+     &            F1R, F1I, F2R, F2I, XI1, XI2, C1, C2, C3,
+     &            divx, gB, lam, divk, dBL, dB, fr, fi, dphi, dqds)
 
       end subroutine cal_xi_liu
 
@@ -628,6 +697,63 @@ C************************************************************
 
       end subroutine cal_metric
 
+      subroutine cal_divmetric(NP,n_chi,s,chi,R,Z,F,dpsids,Jac,B,dm)
+C************************************************************
+C Input
+C    R(s,chi),Z(s,chi) on the equal arc grid, F=R*BT, dpsids=dpsi_p/ds,
+C    Jac, the Jacobian of (s,chi,phi), and B=|B| from cal_metric
+C
+C Output: coefficients of
+C    J div xi_perp = dm1*X1 + dm7*dX1/ds + dm2*dX1/dchi
+C                  + dm3*X2 + dm4*dX2/dchi + dX1,X2/dphi terms
+C    for xi_perp = X1 (e_s - B_s B/B**2) + X2 J B x grad s/B**2:
+C          J xi^s   = J X1                       (dm7=J)
+C          J xi^chi = dm2*X1 + dm4*X2,  dm2=-g_schi psi'**2/(J B**2),
+C                                       dm4=J F/B**2
+C          J xi^phi = dm5*X1 + dm6*X2,  dm5=-g_schi psi' F/(R B)**2,
+C                                       dm6=-g_chichi psi'/B**2
+C          dm1 = dJ/ds + d(dm2)/dchi,  dm3 = d(dm4)/dchi
+C    chi derivatives are periodic centred differences
+C************************************************************
+      integer NP,n_chi,i,j,jp,jm
+      real R(NP,n_chi),Z(NP,n_chi),s(NP),chi(n_chi),F(NP)
+      real dpsids(NP),Jac(NP,n_chi),B(NP,n_chi),dm(NP,n_chi,7)
+      real hchi
+
+      real,allocatable::dRds(:,:),dRdchi(:,:),dZds(:,:),
+     &                  dZdchi(:,:),dJds(:,:),dJdchi(:,:),
+     &                  g_sc(:,:),g_cc(:,:)
+
+      allocate(dRds(NP,n_chi),dRdchi(NP,n_chi),dZds(NP,n_chi),
+     &         dZdchi(NP,n_chi),dJds(NP,n_chi),dJdchi(NP,n_chi),
+     &         g_sc(NP,n_chi),g_cc(NP,n_chi))
+
+      call cald_2d(R,NP,n_chi,s,chi,dRds,dRdchi)
+      call cald_2d(Z,NP,n_chi,s,chi,dZds,dZdchi)
+      call cald_2d(Jac,NP,n_chi,s,chi,dJds,dJdchi)
+       g_cc=dRdchi**2+dZdchi**2
+       g_sc=dRds*dRdchi+dZds*dZdchi
+       dm=0.0
+       do i=2,NP
+          dm(i,:,2)=-g_sc(i,:)*dpsids(i)**2/(Jac(i,:)*B(i,:)**2)
+          dm(i,:,4)=Jac(i,:)*F(i)/B(i,:)**2
+          dm(i,:,5)=-g_sc(i,:)*dpsids(i)*F(i)/(R(i,:)*B(i,:))**2
+          dm(i,:,6)=-g_cc(i,:)*dpsids(i)/B(i,:)**2
+          dm(i,:,7)=Jac(i,:)
+       end do
+       hchi=chi(2)-chi(1)
+       do j=1,n_chi
+          jp=mod(j,n_chi)+1
+          jm=mod(j+n_chi-2,n_chi)+1
+          dm(:,j,1)=dJds(:,j)+(dm(:,jp,2)-dm(:,jm,2))/(2.0*hchi)
+          dm(:,j,3)=(dm(:,jp,4)-dm(:,jm,4))/(2.0*hchi)
+       end do
+       dm(1,:,:)=0.0 ! singularity at s=0
+
+      deallocate(dRds,dRdchi,dZds,dZdchi,dJds,dJdchi,g_sc,g_cc)
+
+      end subroutine cal_divmetric
+
       subroutine cal_eps(n_chi,chi,B,eps)
 C************************************************************
 C     calculate epsillon
@@ -683,6 +809,7 @@ C************************************************************
         ! -----calculate dphi(theta^H)  
           fac(2:(n_chi+1))=1.0-1.0/R(i,:)**2*
      .                      VS(i)/sum(Jac(i,:)/R(i,:)**2*dchi)
+          fac(1)=0.0
           fac=q(i)*fac*theHc
            dphi=cumsum(n_chi+1,fac)*dchi    !  zeta=phi+dphi
            call spline1d(tmpdphiH,chi,n_chi,dphi,theH,n_chi+1,tmp)
@@ -992,6 +1119,17 @@ C************************************************************
 
       end subroutine get_dimensV
 
+      subroutine get_ppeq(NP,pp)
+C     mu0 dp/dpsi on the integer mesh (MARS normalisation)
+      use RCOMDM
+
+      integer NP
+      real    pp(NP)
+
+      pp = PPEQ(1:NP)
+
+      end subroutine get_ppeq
+
       subroutine get_disp(M10,NP1,M,X1R,X1I,X2R,X2I,X3R,X3I)
       use DIMENSIM
       use GLOBALM
@@ -1048,6 +1186,40 @@ C     using linear interpolation
       deallocate(tmp)
       end subroutine get_disp
 
+
+      subroutine get_field(M10,NP1,B1R,B1I,B2R,B2I,B3R,B3I)
+C     perturbed field J deltaB^(s,chi,phi) on the integer mesh; B2U and
+C     B3U live on the half mesh and are centred as X2U, X3U in get_disp
+      use DIMENSIM
+      use GLOBALM
+
+      integer M10,NP1
+      real    B1R(NP1,M10),B1I(NP1,M10),B2R(NP1,M10),B2I(NP1,M10),
+     &        B3R(NP1,M10),B3I(NP1,M10)
+
+      complex*16,dimension(:,:),allocatable::tmp
+      integer i
+
+      B1R = real(B1U(1:NP1,1:M10))
+      B1I = imag(B1U(1:NP1,1:M10))
+      allocate(tmp(NP1,M10))
+      tmp = B2U(1:NP1,1:M10)
+      do i=1,NP1-1
+      tmp(i+1,:)=(CSH(i+1)*B2U(i,1:M10)+CSH(i)*B2U(i+1,1:M10))
+     &           /(CSH(i)+CSH(i+1))
+      enddo
+      B2R = real(tmp)
+      B2I = imag(tmp)
+      tmp = B3U(1:NP1,1:M10)
+      do i=1,NP1-1
+      tmp(i+1,:)=(CSH(i+1)*B3U(i,1:M10)+CSH(i)*B3U(i+1,1:M10))
+     &           /(CSH(i)+CSH(i+1))
+      enddo
+      B3R = real(tmp)
+      B3I = imag(tmp)
+      deallocate(tmp)
+
+      end subroutine get_field
 
       subroutine get_alpha(NRHO,NTHETA,X3,alpha1,alpha2)
       use GLOBALM
