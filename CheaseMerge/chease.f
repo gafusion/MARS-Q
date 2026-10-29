@@ -6388,8 +6388,10 @@ C
 C
          DIMENSION  ZG(2),  ZH(2), ZXI(2)
          parameter (ndivs = 50)
-CLiu020922         static zmagold
+C Retain the previous accepted axis between nonlinear iterations.
          REAL zmagold
+         SAVE zmagold
+         DATA zmagold /0.0/
          zdiv = aspct/float(ndivs)
 C
          IF (NMAG .EQ. 0) THEN
