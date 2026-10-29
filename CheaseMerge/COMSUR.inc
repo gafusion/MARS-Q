@@ -8,6 +8,7 @@ C
 *   ARATIO  : ASPECT RATIO OF FLUX TUBE                               *
 *   BETAB   : GENERALIZED BETA ON FLUX SURFACE                        *
 *   CDQ     : D(Q) / D(PSI) ON FLUX SURFACE OBTAINED BY INTEGRATION   *
+*   CIDI    : TOROIDAL CURRENT INSIDE FLUX SURFACE (NSTTP=4, CINT)    *
 *   CIDR    : FLUX SURFACE INTEGRAL USED FOR SPECIFICATION OF         *
 *             CURRENT DENSITY (SEE SUBROUTINE CINT)                   *
 *   CIDQ    : INTEGRAL FROM CHI=0 TO CHI=2*PI OF J WHERE J IS THE     *
@@ -94,7 +95,7 @@ C
      R   RJBSOS,  RJBSR   ,RJDOTB  ,RJPAR   ,RLENG   ,
      R   RLENG1  ,RNUSTAR ,RPEOP   ,RSURF   ,RSY     ,
      R   TEMPER  ,TMF     ,TMFO    ,TTP     ,TTPO    ,
-     R   VSURF 
+     R   VSURF   ,CIDI
 
 C
          DIMENSION
@@ -119,7 +120,8 @@ C
      R   RLENG(2*NPISO),   RLENG1(2*NPISO),   RNUSTAR(2*NPISO),
      R   RSURF(NPISO),     RSY(NPISO),        
      R   TEMPER(2*NPISO),  TMF(2*NPISO),      TMFO(2*NPISO),     
-     R   TTP(2*NPISO),     TTPO(2*NPISO),     VSURF(NPISO) 
+     R   TTP(2*NPISO),     TTPO(2*NPISO),     VSURF(NPISO),
+     R   CIDI(2*NPISO)
 
 
 
