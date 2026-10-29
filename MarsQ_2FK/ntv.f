@@ -49,14 +49,12 @@ C      wB0=omega_B0 is the grad B drift of the deeply trapped pariticles with x=
 C      qwe=q*omega_E is the E \times B drift
 C      qws=q*omega_*p, is the diamagnetic frequency
 C      qwsT=q*omega_*T,
+C   nu_prof(:,15) is the magnetic shear s=(r/q)dq/dr.
 C      
 C    bc(n_m,n_n,nr),bs(n_m,n_n,nr) is the spectrum of the magnetic
 C                      field strength. 
 C
 C  in(n_in) is the toroidal mode numbers included in the NTV calculation
-C
-C   k02(nk) is the resonant pitches corresponds to x_k02(nk),
-C                where -1 <= [x_k02==x_min/x] <= 1.
 C
 C
 C    ic is a control parameter. 
@@ -72,9 +70,9 @@ C**********************************************************************
       implicit none
       
       integer i,j,n,kprint
-      real q,nu,eps,qwe,wB0
+      real q,nu,eps,qwe,wB0,shear
       real rho_i,wti,qws,qwsT
-      real x(nx),f_nu(nx),nud(nx),k02_i(nx)
+      real x(nx),f_nu(nx),nud(nx)
       real t_bc(n_m,2),t_bs(n_m,2)
       real k0,k_ind(nk),delk(nk),k2(nk),KK1(nk),EE1(nk),KK2(nk),EE2(nk)
       complex*16 T_tmp1,T_tmp2,T_tmp3,I_kn(nx),lambda(6)
@@ -109,6 +107,7 @@ C     calculate the NTV torque density
           qwe=nu_prof(i,8)
           qws=nu_prof(i,9)
          qwsT=nu_prof(i,10)
+        shear=nu_prof(i,15)
          !-------
          nud=0.5*nu/eps*f_nu
 	 T_ntv_non(i)=(0.0,0.0)
@@ -127,8 +126,8 @@ C        printing...
          t_bs(:,1)=bs(:,j,i)
          t_bc(:,2)=bc2(:,j,i)
          t_bs(:,2)=bs2(:,j,i)
-         call gntv(n_m,mm,t_bc,t_bs,q,n,nk,nx,n_k02,x_k02,
-     &             k02,x,nud,qwe,wB0,qws,qwsT,wti,rho_i,R_axis,
+         call gntv(n_m,mm,t_bc,t_bs,q,n,nk,nx,shear,
+     &             x,nud,qwe,wB0,qws,qwsT,wti,rho_i,R_axis,
      &             eps,norm_Z,ic,I_kn,lambda,T_tmp1,T_tmp2,T_tmp3,
      &             KK1,EE1,KK2,EE2,kprint,keyntv)        
          T_ntv_non(i)=T_ntv_non(i)+T_tmp1    
@@ -138,7 +137,7 @@ C        printing...
 C      print*,'... end T_ntv calculation.'
       end subroutine gntv1d
 
-      subroutine gntv(n_m,mm,bc,bs,q,n,nk,nx,n_k02,x_k02,k02,x,nud,
+      subroutine gntv(n_m,mm,bc,bs,q,n,nk,nx,shear,x,nud,
      &                qwe,wB0,qws,qwsT,wti,rho_i,R0,eps,norm_Z,
      &                ic,I_kn,lambda,T_ntv1,T_ntv2,T_ntv3,
      &                KK1,EE1,KK2,EE2,kprint,keyntv)
@@ -157,8 +156,7 @@ C     bc(n_m),bs(n_m) are the n^th harmonic of the spectrum
 C                     of the magnetic field strength. 
 C
 C     nk, is the number of the grids in kappa space
-C     k02(nk) is the resonant pitches corresponds to x_k02(nk),
-C                where -1 <= [x_k02==x_min/x] <= 1.
+C     shear=(r/q)dq/dr sets the precession of the resonant pitch.
 C
 C      nx is the number of the grids in energy space.
 C      x=v^2/v_t^2, is the normalized energy
@@ -184,11 +182,11 @@ C        by Y. Sun
 C***************************************************************************
       implicit none
       real*8,parameter::pi=3.1415926535897932
-      integer n_m,mm(n_m),n,nk,nx,n_k02,ic,nt,kprint,k,keyntv
-      real bc(n_m,2),bs(n_m,2),q
-      real x(nx),nud(nx),x_k02(n_k02),k02(n_k02)
+      integer n_m,mm(n_m),n,nk,nx,ic,nt,kprint,k,keyntv
+      real bc(n_m,2),bs(n_m,2),q,shear
+      real x(nx),nud(nx)
       real qwe,wB0,qws,qwsT,wti,rho_i,R0,eps,norm_Z
-      real xmin,k02_i(nx),tmp(nk)
+      logical resx(nx)
       real min_t,max_t
       real,allocatable::theta(:),bnc(:,:),bns(:,:)
       real T0,w1,w2
@@ -208,15 +206,15 @@ C     form bn(m) to bn(theta)
      &     ,q,n,nt,theta,bnc,bns)
 !-------calculate pitch angle integral
       if (ic.EQ.1)then          !  Shaing's formula
-        call Ik_shaing(n,nt,theta,bnc,bns,x,nx,nud,qwe,wB0,
-     &                 nk,xmin,n_k02,x_k02,k02,I_kn,
+        call Ik_shaing(n,nt,theta,bnc,bns,x,nx,nud,qwe,wB0,shear,
+     &                 nk,resx,I_kn,
      &                 KK1,EE1,KK2,EE2,kprint,keyntv)
 
       elseif (ic.EQ.2)then
                   !     numerical
       end if
 !--------calculate energy integeral
-      call intE(nx,x,xmin,I_kn,lambda)
+      call intE(nx,x,resx,I_kn,lambda)
 !--------calculate torque density
       w1=qwe-qws
       w2=-qwsT 
@@ -230,8 +228,8 @@ C     form bn(m) to bn(theta)
 
       end subroutine gntv
 
-      subroutine Ik_shaing(n,nt,theta,bnc,bns,x,nx,nud,qwe,wB0,
-     &                     nk,xmin,n_k02,x_k02,k02,I_kn,
+      subroutine Ik_shaing(n,nt,theta,bnc,bns,x,nx,nud,qwe,wB0,shear,
+     &                     nk,resx,I_kn,
      &                     KK1,EE1,KK2,EE2,kprint,keyntv)
 C***************************************************
 C      calculate the Pitch angle integeral 
@@ -249,14 +247,15 @@ C***************************************************
       use NTV_lib
       implicit none
       real*8,parameter::pi=3.1415926535897932
-      integer i,n,nx,nk,n_k02,nt,keyntv
-      real qwe,wB0,xmin,fac_refine
-      real,dimension(1:nx)::x,nud,kappa02
-     &     ,fac_1nu,fac_nu,nusd,delk_i
-     &     ,dgdk1,fac_sbp,k02_i
+      integer,parameter::maxroot=4
+      integer i,n,nx,nk,nt,keyntv,r,nroot(nx)
+      real qwe,wB0,shear,xmin,fac_refine
+      real,dimension(1:nx)::x,nud
+     &     ,fac_1nu,fac_nu,nusd,delk_i,fac_sbp
       real,dimension(1:nk)::tmp
-      real x_k02(n_k02),k02(n_k02)
-      real bncb(nx,2),bnsb(nx,2),KX(nx),EX(nx)
+      real kap(nx,maxroot),KX(nx,maxroot),dGdk(nx,maxroot)
+      real bncb(nx,2),bnsb(nx,2)
+      logical resx(nx)
       real k0,k_ind(nk),k2(nk),K(nk),E(nk),F(nk),delk(nk)
       real theta(nt),min_t,max_t,phi(nt),bnc(nt,2),bns(nt,2)
       real KK1(nk),EE1(nk),KK2(nk),EE2(nk)
@@ -302,23 +301,31 @@ C----nu-sqrt(nu) regime
      .               ,k2,K,F,nx,delk_i,int_bdy,keyntv)
       k_nu=fac_nu*int_bdy                
 C---- superbanana-plateau regime
-      call cal_k02(n_k02,x_k02,k02,nx,xmin,x,k02_i) ! 1-k^2
-!     call check_k0(nx,k02_i,delk(1),1)
-      kappa02=1.0-k02_i
-      call ellipke(kappa02,nx,KX,EX)   
-      call bavgb(nt,bnc,bns,theta,phi,nx,kappa02,KX,bncb,bnsb)
-      dgdk1=(1.0-kappa02)/((EX/KX-1.0)**2/kappa02+2.0*EX/KX-1.0)
-      fac_sbp=abs(4.0*pi*KX*dgdk1*n/wB0/x)
-      if (keyntv.ne.2) k_sbp=fac_sbp*(bncb(:,1)**2+bnsb(:,1)**2)
-      if (keyntv.eq.2) k_sbp=fac_sbp*(bncb(:,1)*bncb(:,2)+
+C     Resonance x*wB0*G(kappa0) = -qwe.  The shear part of G is the q'
+C     term of dJ/dpsi (Martitsch 2016, Albert 2016); for |s| > 1/2 G is
+C     not monotone, so a pitch may have two resonances and x < |xmin|
+C     may resonate.
+      call kappa0_roots(nx,x,xmin,shear,nk,k2,K,E,maxroot,
+     &                  nroot,kap,KX,dGdk)
+      resx=nroot.gt.0
+      k_sbp=(0.,0.)
+      do r=1,maxval(nroot)
+         call bavgb(nt,bnc,bns,theta,phi,nx,kap(:,r),KX(:,r),
+     &              bncb,bnsb)
+         fac_sbp=abs(4.0*pi*KX(:,r)*n/(wB0*x*dGdk(:,r)))
+         where (nroot.lt.r) fac_sbp=0.0
+         if (keyntv.ne.2) k_sbp=k_sbp+fac_sbp*(bncb(:,1)**2+
+     &                                         bnsb(:,1)**2)
+         if (keyntv.eq.2) k_sbp=k_sbp+fac_sbp*(bncb(:,1)*bncb(:,2)+
      &                                bnsb(:,1)*bnsb(:,2) +
      &                       (0.,1.)*(bnsb(:,1)*bncb(:,2)-
      &                                bncb(:,1)*bnsb(:,2))) 
+      end do
 C---- combined formula
       k_non=k_nu/(1.0+k_nu/k_1nu)
       k_res=k_sbp/(1.0+k_sbp/k_1nu)    
       do i=1,nx
-         if(x(i).LT.abs(xmin))then
+         if(.not.resx(i))then
             I_kn(i)=k_non(i)
          else
             I_kn(i)=k_res(i)
@@ -354,20 +361,21 @@ c$$$            print*,'it is forced to become',delk1
       
       end subroutine check_k0
 
-      subroutine intE(nx,x,xmin,k,lambda)
+      subroutine intE(nx,x,resx,k,lambda)
 C***************************************************
 C    energy integral 
 C***************************************************
       implicit none
       integer nx,i,j
-      real x(nx),xmin,dx
+      real x(nx),dx
+      logical resx(nx)
       complex*16 k(nx),lambda(6),f
       dx=x(2)-x(1)
       lambda = (0.,0.)
       do i=1,3
            do j=1,nx
               f=0.5*k(j)*(x(j)-2.5)**(i-1.0)*x(j)**(2.5)*exp(-x(j))
-              if (x(j).lt.abs(xmin)) then
+              if (.not.resx(j)) then
                  lambda(i)=lambda(i) + f*dx
               else
                  lambda(i+3)=lambda(i+3) + f*dx
@@ -376,24 +384,62 @@ C***************************************************
       enddo
       end subroutine intE
 
-      subroutine cal_k02(nk,x_k02,k02,nx,xmin,x,k02_i)
+      subroutine kappa0_roots(nx,x,xmin,shear,nk,k2,K,E,maxroot,
+     &                        nroot,kap,KX,dGdk)
 C***************************************************
-C      calculate resonant pitch kappa_0^2 (k02_i)
+C      trapped pitches kappa0^2 in [0,1) with G(kappa0^2) = -xmin/x,
+C      G = 2E/K-1 + 4 shear (E/K+kappa^2-1), dGdk = dG/dkappa^2.
+C      Unused slots hold a valid dummy pitch.
 C***************************************************
       implicit none
-      integer i,nx,nk
-      real x(nx),x_k02(nk),k02(nk),x0(nx),tmp(nk),k02_i(nx)
-      real xmin
-      x0=xmin/x
-      do i=1,nx                 !  avoid the problem for x<|x_min|
-         if (x0(i).GT.x_k02(nk))then
-            x0(i)=x_k02(nk)
-         elseif (x0(i).LT.x_k02(1))then
-            x0(i)=x_k02(1)
-         end if
+      integer nx,nk,maxroot,nroot(nx),i,j,it
+      real x(nx),xmin,shear,k2(nk),K(nk),E(nk)
+      real kap(nx,maxroot),KX(nx,maxroot),dGdk(nx,maxroot)
+      real m(nk+1),g(nk+1),target,ua,ub,fa,fm,dedm,m1(1),k1(1),e1(1)
+      m(1:nk)=k2
+      g(1:nk)=2.0*E/K-1.0+4.0*shear*(E/K+k2-1.0)
+C     analytic limit kappa^2 -> 1, E/K -> 0
+      m(nk+1)=1.0
+      g(nk+1)=-1.0
+      nroot=0
+      kap=0.5
+      m1=0.5
+      call ellipke(m1,1,k1,e1)
+      KX=k1(1)
+      dGdk=1.0
+      do i=1,nx
+         target=-xmin/x(i)
+         do j=1,nk
+            if (((g(j).gt.target).eqv.(g(j+1).gt.target)).or.
+     &          nroot(i).eq.maxroot) cycle
+C           bisection in log(1-kappa^2), down to 1-kappa^2 = 1e-16
+            ua=log(1.0-m(j))
+            ub=log(max(1.0-m(j+1),1.0e-16))
+            fa=g(j)-target
+            do it=1,60
+               m1=1.0-exp(0.5*(ua+ub))
+               call ellipke(m1,1,k1,e1)
+               fm=2.0*e1(1)/k1(1)-1.0+4.0*shear*(e1(1)/k1(1)+m1(1)-1.0)
+     &            -target
+               if ((fm.gt.0.0).eqv.(fa.gt.0.0)) then
+                  ua=0.5*(ua+ub)
+                  fa=fm
+               else
+                  ub=0.5*(ua+ub)
+               end if
+            end do
+            m1=1.0-exp(0.5*(ua+ub))
+            call ellipke(m1,1,k1,e1)
+            nroot(i)=nroot(i)+1
+            kap(i,nroot(i))=m1(1)
+            KX(i,nroot(i))=k1(1)
+            dedm=-((e1(1)/k1(1)-1.0)**2/m1(1)+2.0*e1(1)/k1(1)-1.0)
+     &           /(2.0*(1.0-m1(1)))
+            dGdk(i,nroot(i))=(2.0+4.0*shear)*dedm+4.0*shear
+         end do
       end do
-      call spline1d(k02_i,x0,nx,k02,x_k02,nk,tmp)
-      end subroutine cal_k02	
+      end subroutine kappa0_roots
+
 
       subroutine f_nud(x,nx,z,f)
 C***************************************************

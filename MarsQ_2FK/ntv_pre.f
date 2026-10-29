@@ -753,8 +753,8 @@ C
 C   output:
 C
 C   nu_prof(nr,n_prof)=
-C           (rho,q,eps,rho_i,nu,wti,wB0,qwe,qws,qwsT,dB,we,nui,nue)
-C             1  2  3    4    5   6   7   8  9  10   11 12  13  14
+C           (rho,q,eps,rho_i,nu,wti,wB0,qwe,qws,qwsT,dB,we,nui,nue,s)
+C             1  2  3    4    5   6   7   8  9  10   11 12  13  14 15
 C
 C      rho is the radius, q is the safty factor, eps=epsillon~ r/R
 C      rho_i=n_i*m_i, nu is the collisionality, wti is the trasit frequency
@@ -778,13 +778,13 @@ C*********************************************************************
 
       real,dimension(:),allocatable::eps,q,Ne,Te,Ti,w_phi,Pe,Pi,
      &                  dNe,dTe,dTi,dPe,dPi,qws,qwsT,qwsi,qwsTi,
-     &                  qwthe,qwe,nu,wti,wt,wte,wB0,rho_i
+     &                  qwthe,qwe,nu,wti,wt,wte,wB0,rho_i,dq
 
       allocate(eps(nr),q(nr),Ne(nr),Te(nr),Ti(nr),w_phi(nr),Pe(nr),
      &         Pi(nr),dNe(nr),dTe(nr),dTi(nr),dPe(nr),dPi(nr),
      &         qws(nr),qwsT(nr),qwsi(nr),qwsTi(nr),qwthe(nr),
      &         qwe(nr),nu(nr),wti(nr),wt(nr),wte(nr),wB0(nr),
-     &         rho_i(nr))
+     &         rho_i(nr),dq(nr))
 
 !----------
 !         Zi=1
@@ -877,10 +877,14 @@ C             1  2  3    4    5   6   7   8  9  10
       nu_prof(:,12)=r_prof(:,12)
       nu_prof(:,13)=r_prof(:,13)
       nu_prof(:,14)=r_prof(:,14)
+C     shear s=(r/q)dq/dr with the large-aspect-ratio map of wB0,
+C     r=eps*R0 and dpsi/dr=r*B0/|q|
+      call cald_1d(q,nr,r,dq)
+      nu_prof(:,15)=eps**2*R0**2*abs(B0)*dq*abs(drdpsi)/(q*abs(q))
 
       deallocate(eps,q,Ne,Te,Ti,w_phi,Pe,Pi, dNe,dTe,dTi,
      &           dPe,dPi,qws,qwsT,qwsi,qwsTi,qwthe,qwe,nu,
-     &           wti,wt,wte,wB0,rho_i)
+     &           wti,wt,wte,wB0,rho_i,dq)
 
       end subroutine cal_nu
 
