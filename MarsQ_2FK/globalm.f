@@ -219,5 +219,163 @@ C     PARAMETERS FOR RMZM_F
       REAL*8  R0EXP,B0EXP,VOLTOT
       COMPLEX*16 VDEXIR,VDEXIZ
 
+      CONTAINS
+
+C====================================================================
+C INUTYPE.GE.1 ENERGY RESONANCE.  WITH D(X) = P*SQRT(X)+Q*X+W0+
+C CI*B*(1-C*X**-1.5) THE LORENTZIAN OF G/D ABOUT A REAL ROOT XR OF
+C RE(D) HAS HALF-WIDTH GAM = |IM D(XR)|/|RE D'(XR)|, PROPORTIONAL TO
+C NU*XR**-1.5.  WHEN GAM IS BELOW FOUR CELLS OF THE U MESH THE
+C TWO-POINT GAUSS SUM ALIASES THE POLE AND CONVERGES ONLY ONCE THE
+C MESH RESOLVES GAM.  ON KEPJ CELLS EACH SIDE OF THE ROOT THIS
+C ROUTINE REPLACES THAT SUM BY THE INTEGRAL OF THE CELL'S LINEAR
+C INTERPOLANT OF G IN U TIMES 1/D, TAKEN IN X = XR+GAM*SINH(T)
+C (SMOOTH IN T, NEAREST SINGULARITY AT T = +-I*PI/2) WITH 8-POINT
+C GAUSS-LEGENDRE ON T-INTERVALS OF LENGTH <= 2.  G = NUMERATOR*EFAC
+C AT THE NODES ZEPK; KEK = ISPECIES_EK (0: X=TAN(PI*U/2), 1: X=U).
+C ZCOR IS ADDED TO THE CALLER'S TWO-POINT SUM OVER ALL CELLS.  MESH
+C OF KENERGYMESH: NEPK, EPK, ZEPKO, ZEPKN.
+C====================================================================
+      PURE SUBROUTINE KEPOLECORR(G,P,Q,W0,B,C,KEK,NEPK,EPK,ZEPKO,ZEPKN,
+     &                           ZCOR)
+
+      INTEGER,INTENT(IN)     :: KEK,NEPK
+      REAL*8,INTENT(IN)      :: P,Q,B,C,EPK(NEPK),ZEPKO(2*NEPK-1),
+     &                          ZEPKN(2*NEPK-1)
+      COMPLEX*16,INTENT(IN)  :: G(2*NEPK-1),W0
+      COMPLEX*16,INTENT(OUT) :: ZCOR
+
+      INTEGER    KEPJ
+      PARAMETER  (KEPJ=4)
+C     8-POINT GAUSS-LEGENDRE, NODES +-TG, WEIGHTS WG
+      REAL*8,PARAMETER :: TG(4) = (/0.18343464249564984D0,
+     &   0.52553240991632900D0,0.79666647741362670D0,
+     &   0.96028985649753620D0/)
+      REAL*8,PARAMETER :: WG(4) = (/0.36268378337836180D0,
+     &   0.31370664587788716D0,0.22238103445337445D0,
+     &   0.10122853629037652D0/)
+
+      INTEGER    NPOLE,IR,K,K0,KLO,KHI,IP,NS,IS,IG,ISG
+      REAL*8     PI,HU,S(2),DISC,XR,AIM,R1,R2,GAM,UR,GU,DMIN
+      REAL*8     XRP(2),GMP(2),URP(2),XA,XB,TA,TB,T0,T1,T,X,U,DUDX
+      COMPLEX*16 ACC,GL
+      LOGICAL,DIMENSION(:),ALLOCATABLE :: OCELL
+
+      ZCOR = (0.0D0,0.0D0)
+      PI   = ACOS(-1.0D0)
+      HU   = EPK(2)-EPK(1)
+
+C     REAL ROOTS S = SQRT(XR) > 0 OF Q*S**2+P*S+RE(W0)
+      NPOLE = 0
+      S     = -1.0D0
+      IF (Q.EQ.0.0D0) THEN
+         IF (P.NE.0.0D0) S(1) = -DREAL(W0)/P
+      ELSE
+         DISC = P*P-4.0D0*Q*DREAL(W0)
+         IF (DISC.GE.0.0D0) THEN
+            S(1) = (-P+SQRT(DISC))/(2.0D0*Q)
+            S(2) = (-P-SQRT(DISC))/(2.0D0*Q)
+         ENDIF
+      ENDIF
+      DO IR=1,2
+         IF (S(IR).LE.0.0D0) CYCLE
+         XR = S(IR)**2
+         IF (KEK.EQ.1.AND.XR.GE.1.0D0) CYCLE
+         AIM = ABS(DIMAG(W0)+B*(1.0D0-C*XR**(-1.5D0)))
+         IF (AIM.LE.0.0D0) CYCLE
+C        RE D' = P/(2 SQRT X)+Q; AT A DOUBLE ROOT USE RE D'' = -P/(4 X**1.5)
+         R1  = ABS(P/(2.0D0*S(IR))+Q)
+         R2  = ABS(P)/(4.0D0*XR**1.5D0)
+         GAM = HUGE(1.0D0)
+         IF (R1.GT.0.0D0) GAM = AIM/R1
+         IF (R2.GT.0.0D0) GAM = MIN(GAM,SQRT(2.0D0*AIM/R2))
+         IF (KEK.EQ.0) THEN
+            UR = 2.0D0/PI*ATAN(XR)
+            GU = GAM*2.0D0/PI/(1.0D0+XR*XR)
+         ELSE
+            UR = XR
+            GU = GAM
+         ENDIF
+         IF (GU.GE.4.0D0*HU) CYCLE
+         NPOLE = NPOLE+1
+         XRP(NPOLE) = XR
+         GMP(NPOLE) = GAM
+         URP(NPOLE) = UR
+      ENDDO
+      IF (NPOLE.EQ.0) RETURN
+
+      ALLOCATE(OCELL(NEPK-1))
+      OCELL = .FALSE.
+      DO IP=1,NPOLE
+         K0  = MIN(NEPK-1,INT(URP(IP)/HU)+1)
+         KLO = MAX(1,K0-KEPJ)
+         KHI = MIN(NEPK-1,K0+KEPJ)
+         OCELL(KLO:KHI) = .TRUE.
+      ENDDO
+C     X = TAN(PI*U/2) IS INFINITE AT THE END OF THE LAST CELL
+      IF (KEK.EQ.0) OCELL(NEPK-1) = .FALSE.
+
+      DO K=1,NEPK-1
+         IF (.NOT.OCELL(K)) CYCLE
+         IP   = 1
+         DMIN = ABS(URP(1)-0.5D0*(EPK(K)+EPK(K+1)))
+         IF (NPOLE.EQ.2) THEN
+            IF (ABS(URP(2)-0.5D0*(EPK(K)+EPK(K+1))).LT.DMIN) IP = 2
+         ENDIF
+         XR  = XRP(IP)
+         GAM = GMP(IP)
+         IF (KEK.EQ.0) THEN
+            XA = TAN(0.5D0*PI*EPK(K))
+            XB = TAN(0.5D0*PI*EPK(K+1))
+         ELSE
+            XA = EPK(K)
+            XB = EPK(K+1)
+         ENDIF
+         TA = ASINH((XA-XR)/GAM)
+         TB = ASINH((XB-XR)/GAM)
+         NS = MAX(1,CEILING(0.5D0*(TB-TA)))
+         ACC = (0.0D0,0.0D0)
+         DO IS=1,NS
+            T0 = TA+(TB-TA)*DFLOAT(IS-1)/DFLOAT(NS)
+            T1 = TA+(TB-TA)*DFLOAT(IS)/DFLOAT(NS)
+            DO IG=1,4
+            DO ISG=-1,1,2
+               T = 0.5D0*(T0+T1)+ISG*0.5D0*(T1-T0)*TG(IG)
+               X = XR+GAM*SINH(T)
+               IF (KEK.EQ.0) THEN
+                  U    = 2.0D0/PI*ATAN(X)
+                  DUDX = 2.0D0/PI/(1.0D0+X*X)
+               ELSE
+                  U    = X
+                  DUDX = 1.0D0
+               ENDIF
+               GL  = G(2*K-1)+(G(2*K)-G(2*K-1))*(U-ZEPKO(2*K-1))
+     &               /(ZEPKO(2*K)-ZEPKO(2*K-1))
+               ACC = ACC+0.5D0*(T1-T0)*WG(IG)*GL/DEN(X)*DUDX
+     &               *GAM*COSH(T)
+            ENDDO
+            ENDDO
+         ENDDO
+         IF (KEK.EQ.0) THEN
+            ZCOR = ZCOR+ACC-0.5D0*(EPK(K+1)-EPK(K))*
+     &         (G(2*K-1)/DEN(ZEPKN(2*K-1))+G(2*K)/DEN(ZEPKN(2*K)))
+         ELSE
+            ZCOR = ZCOR+ACC-0.5D0*(EPK(K+1)-EPK(K))*
+     &         (G(2*K-1)/DEN(ZEPKO(2*K-1))+G(2*K)/DEN(ZEPKO(2*K)))
+         ENDIF
+      ENDDO
+      DEALLOCATE(OCELL)
+
+      RETURN
+
+      CONTAINS
+
+      PURE COMPLEX*16 FUNCTION DEN(XX)
+      REAL*8,INTENT(IN) :: XX
+      DEN = P*SQRT(XX)+Q*XX+W0+(0.0D0,1.0D0)*B*(1.0D0-C*XX**(-1.5D0))
+      END FUNCTION DEN
+
+      END SUBROUTINE KEPOLECORR
+
       END MODULE GLOBALM
 
