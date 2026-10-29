@@ -300,7 +300,10 @@ C****************************************************************
 C      call get_alpha(NP,n_chi,X3,alpha1,alpha2)
 
        bmn = 0.
-       htheta = 2.*npi/(n_chi-1)
+       ! xgrid() supplies periodic midpoint samples with spacing 2*pi/n_chi.
+       ! The previous n_chi-1 trapezoid used the wrong spacing, omitted the
+       ! periodic closing cell, and leaked a manufactured single Fourier mode.
+       htheta = 2.*npi/n_chi
 
 !-------------- transform to real space and calculate dB and its spectrum
        allocate(F1R(n_chi))
@@ -373,9 +376,9 @@ C      decompose dB in Fourier space in Hamada coordinate system (V,theta^H,phi^
 C      note that transform to Hamada coordinates does not change the toroidal 
 C      mode number n
        do k=-m_max,m_max
-          do j=1,n_chi-1
-             bmn(k+m_max+1,1,i) = bmn(k+m_max+1,1,i) + 
-     &       (dB(j)+dB(j+1))*.5*exp(-(0.,1.)*k*(j-.5)*htheta)
+          do j=1,n_chi
+             bmn(k+m_max+1,1,i) = bmn(k+m_max+1,1,i) +
+     &       dB(j)*exp(-(0.,1.)*k*(j-.5)*htheta)
           enddo
        enddo
 
@@ -683,6 +686,7 @@ C************************************************************
         ! -----calculate dphi(theta^H)  
           fac(2:(n_chi+1))=1.0-1.0/R(i,:)**2*
      .                      VS(i)/sum(Jac(i,:)/R(i,:)**2*dchi)
+          fac(1)=0.0
           fac=q(i)*fac*theHc
            dphi=cumsum(n_chi+1,fac)*dchi    !  zeta=phi+dphi
            call spline1d(tmpdphiH,chi,n_chi,dphi,theH,n_chi+1,tmp)
