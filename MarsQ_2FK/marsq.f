@@ -17482,8 +17482,21 @@ C L.P.         5: ANOTHER ANALYTIC MODEL
          CLOSE(99)
 C        ZTEMP = MAXVAL(ABS(RPRV))
          ZTEMP = RPRV(1)
-         IF (NEXPV.EQ.1) ROTE = ZTEMP*ZTAUA0
-         RPRV = ROTE*RPRV/ZTEMP
+         IF (NEXPV.EQ.1) THEN
+C           DIMENSIONAL INPUT NEEDS NO AXIS NORMALISATION.
+C           A ZERO AXIS VALUE MAY HAVE FINITE OFF-AXIS ROTATION.
+            ROTE = ZTEMP*ZTAUA0
+            RPRV = RPRV*ZTAUA0
+         ELSEIF (ZTEMP.EQ.0.) THEN
+C           ONLY THE IDENTICALLY ZERO NORMALISED PROFILE IS DEFINED.
+            IF (MAXVAL(ABS(RPRV)).GT.0..OR.ROTE.NE.0.) THEN
+               WRITE(*,*) 'NPROFR=4: ZERO AXIS NORMALISATION'
+               STOP 1
+            ENDIF
+            RPRV = 0.
+         ELSE
+            RPRV = ROTE*RPRV/ZTEMP
+         ENDIF
          IF (IRAD.EQ.1) THEN
             SR  = CS(1:NRP1)
             SRM = CSM(1:NRP1)
