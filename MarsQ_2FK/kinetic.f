@@ -9971,8 +9971,11 @@ c     by continuous extension from unstable half-plane
          y = sqrt(-z)
       else
          y = -sqrt(-z)
-         if (real(z).gt.0.and.abs(imag(z)).lt.1.0e-15) y = sqrt(-z)
       endif
+c     real z > 0 is not resonant: Im y > 0 on either branch; sqrt of a
+c     signed-zero imaginary part would pick the sheet by the sign of 0
+      if (real(z).gt.0.and.abs(imag(z)).lt.1.0e-15)
+     &   y = (0.,1.)*sqrt(real(z))
 
       plasmax = -plasmaz(y)*y/2.
 
