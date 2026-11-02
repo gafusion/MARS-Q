@@ -869,7 +869,13 @@ C             1  2  3    4    5   6   7   8  9  10
       nu_prof(:,3)=eps
       nu_prof(:,4)=rho_i
       nu_prof(:,5)=nu
-      nu_prof(:,6)=wti
+! T0 in gntv needs rho_i*wti**2 = 2 n T/(q R0)**2 of the species; rho_i
+! is n m_i for both, so electrons take the transit frequency at T_e
+      if (Z.GT.0) then
+         nu_prof(:,6)=wti
+      else
+         nu_prof(:,6)=4.4e5*sqrt(Te)/sqrt(mui)/R0/q
+      end if
       nu_prof(:,7)=wB0
       nu_prof(:,8)=qwe
       nu_prof(:,9)=qws
