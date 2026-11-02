@@ -9920,7 +9920,24 @@ c     compute principle part
       z = (sqrt(pi)*y*z1 + z2 + z3)*0.5
       plasmay= y*z
 
-c     compute residual part
+      else
+ 
+      z1 = sqrt(pi)
+      z2 = 1./y
+      plasmay = (z1 - z2)*0.5
+      loop1: do k=1,16
+c        asymptotic series: stop at its smallest term
+         if (abs(z2*k/y2).gt.abs(z2)) exit loop1
+         z1 = z1*(k-0.5)/y2
+         z2 = z2*k/y2
+         plasmay = plasmay + (z1 - z2)*0.5
+         if (abs(z2).lt.1.0e-14) exit loop1
+      end do loop1
+
+      endif
+
+c     compute residual part, for both branches: the asymptotic series has
+c     no pole term, which carries the resonance for real(y) < 0
       a = real(y)
       b = imag(y)
       if (a.gt.0.) then
@@ -9939,20 +9956,6 @@ c     compute residual part
          endif
       endif
       plasmay = plasmay -(0.,1.)*p*y*exp(-y2)
-
-      else
- 
-      z1 = sqrt(pi)
-      z2 = 1./y
-      plasmay = (z1 - z2)*0.5
-      loop1: do k=1,16
-         z1 = z1*(k-0.5)/y2
-         z2 = z2*k/y2
-         plasmay = plasmay + (z1 - z2)*0.5
-         if (abs(z2).lt.1.0e-14) exit loop1
-      end do loop1
-
-      endif
       
       return
       end
