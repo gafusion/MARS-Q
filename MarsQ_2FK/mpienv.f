@@ -69,6 +69,52 @@
         VQ1PERPM= 0.
         VQ2PERPM= 0.
         VQ3PERPM= 0.
+C       KJPCOEFF ADDS TO EVERY SURFACE COEFFICIENT, SO A NEW SWEEP OR MPI
+C       TASK MUST START FROM ZERO IN ALL OF THEM
+        VDPPARA = 0.
+        VDPPERP = 0.
+        VDPPARAM= 0.
+        VDPPERPM= 0.
+        IF (ALLOCATED(VX1DPHI)) THEN
+           VX1DPHI = 0.
+           VX2DPHI = 0.
+           VQ1DPHI = 0.
+           VQ2DPHI = 0.
+           VQ3DPHI = 0.
+           VDPDPHI = 0.
+           VX1DPHIM= 0.
+           VX2DPHIM= 0.
+           VQ1DPHIM= 0.
+           VQ2DPHIM= 0.
+           VQ3DPHIM= 0.
+           VDPDPHIM= 0.
+        ENDIF
+        IF (ALLOCATED(VX1PARE)) THEN
+           VX1PARE = 0.
+           VX1PERE = 0.
+           VX2PARE = 0.
+           VX2PERE = 0.
+           VQ1PARE = 0.
+           VQ1PERE = 0.
+           VQ2PARE = 0.
+           VQ2PERE = 0.
+           VQ3PARE = 0.
+           VQ3PERE = 0.
+           VDPPARE = 0.
+           VDPPERE = 0.
+           VX1PAREM= 0.
+           VX1PEREM= 0.
+           VX2PAREM= 0.
+           VX2PEREM= 0.
+           VQ1PAREM= 0.
+           VQ1PEREM= 0.
+           VQ2PAREM= 0.
+           VQ2PEREM= 0.
+           VQ3PAREM= 0.
+           VQ3PEREM= 0.
+           VDPPAREM= 0.
+           VDPPEREM= 0.
+        ENDIF
       END SUBROUTINE INIT_SURFACE_QUANTITY
     
       SUBROUTINE CHECK_MPI_ERROR ()
