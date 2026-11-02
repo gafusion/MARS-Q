@@ -839,7 +839,8 @@ C*********************************************************************
     !  Ti=Ti/1.0e3
     !  print*,R0
       wti=4.4e5*sqrt(Ti)/sqrt(mui)/R0/q
-      wte=1.89e7*sqrt(Te)/sqrt(mui)/R0/q
+! v_te = 1.89e7 sqrt(Te[keV]) m/s carries the electron mass already
+      wte=1.89e7*sqrt(Te)/R0/q
 
       if (Z.GT.0)then     ! collisionality and grad B drift
          if (r_prof(1,13).lt.0) then
