@@ -7232,7 +7232,7 @@ C=======================================================================
 
       REAL*8     RL,OMEGAE,RTMP,REPS
       COMPLEX*16 ZVI(4),OMEGAN,OMEGASA,OMEGASB,OMEGASC,
-     &           plasmay
+     &           plasmay,ZY
       PARAMETER  (REPS=1.0E-13)
 
       COMPLEX*16 NUMER,DENOM
@@ -7271,10 +7271,14 @@ C     BOUNCE RESONANCE OF TRAPPED THERMAL PARTICLES WITH IF0TYPE=0
          OMEGASB = RNTOR*OMEGAST(JS,KGRID,KP)/RTMP
 
          IF (ABS(OMEGAN).LT.100.0) THEN
+         ZY = plasmay(OMEGAN)
+C        REAL OMEGAN: PLASMAY TAKES THE POLE FROM IM(OMEGAN)<0, THE CAUSAL
+C        SIDE ONLY FOR RTMP>0; ITS PRINCIPAL PART IS REAL THERE
+         IF (DIMAG(OMEGAN).EQ.0..AND.RTMP.LT.0.) ZY = DCONJG(ZY)
          ZVI(1) = 4.0*(OMEGAN+OMEGASA+OMEGAN**2*OMEGASB)*
      &         (1.-3.*SQRT(PI)/8.*OMEGAN+0.5*OMEGAN**2-SQRT(PI)/4.*
      &         OMEGAN**3+0.5*OMEGAN**4-SQRT(PI)/2.*OMEGAN**5+
-     &         OMEGAN**5*plasmay(OMEGAN)) + 
+     &         OMEGAN**5*ZY) + 
      &         4.*OMEGASB*(3.-15./16.*SQRT(PI)*OMEGAN)
          ELSE
          ZVI(1) = 4.0*(OMEGAN+OMEGASA+OMEGAN**2*OMEGASB)*
