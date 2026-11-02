@@ -1956,29 +1956,11 @@ C=======================================================================
      &          -GG(VQ3PARAM(MROW,MSA,I),VQ3PARA(MROW,MSA,I)*ZB3M,
      &              VQ3PARA(MROW,MSA,I+1)*ZB3P)*Y(KYB3+LYCOL,I))
 
-               IF (KYPE.GT.0)
-     &         RY(KYPE+LYROW,I)=RY(KYPE+LYROW,I) + TTMP*(
-     &          -GF(VQ1PARE(MROW,MSA,I),VQ1PAREM(MROW,MSA,I))*
-     &           X(KXB1+LXCOL,I)    
-     &          -GF(VQ1PARE(MROW,MSA,I+1),VQ1PAREM(MROW,MSA,I))*
-     &           X(KXB1+LXCOL,I+1)    
-     &          -GG(VQ2PAREM(MROW,MSA,I),VQ2PARE(MROW,MSA,I),
-     &              VQ2PARE(MROW,MSA,I+1))*Y(KYB2+LYCOL,I)
-     &          -GG(VQ3PAREM(MROW,MSA,I),VQ3PARE(MROW,MSA,I)*ZB3M,
-     &              VQ3PARE(MROW,MSA,I+1)*ZB3P)*Y(KYB3+LYCOL,I))
-
                IF (KXDPHI.GT.0) 
      &         RY(KYPPARA+LYROW,I)=RY(KYPPARA+LYROW,I) + TTMP*(
      &          -GF(VDPPARA(MROW,MSA,I),VDPPARAM(MROW,MSA,I))*
      &           X(KXDPHI+LXCOL,I)    
      &          -GF(VDPPARA(MROW,MSA,I+1),VDPPARAM(MROW,MSA,I))*
-     &           X(KXDPHI+LXCOL,I+1))    
-
-               IF (KXDPHI.GT.0.AND.KYPE.GT.0) 
-     &         RY(KYPE+LYROW,I)=RY(KYPE+LYROW,I) + TTMP*(
-     &          -GF(VDPPARE(MROW,MSA,I),VDPPAREM(MROW,MSA,I))*
-     &           X(KXDPHI+LXCOL,I)    
-     &          -GF(VDPPARE(MROW,MSA,I+1),VDPPAREM(MROW,MSA,I))*
      &           X(KXDPHI+LXCOL,I+1))    
 
                RY(KYPPERP+LYROW,I)=RY(KYPPERP+LYROW,I) + TTMP*(
@@ -1991,34 +1973,17 @@ C=======================================================================
      &          -GG(VQ3PERPM(MROW,MSA,I),VQ3PERP(MROW,MSA,I)*ZB3M,
      &              VQ3PERP(MROW,MSA,I+1)*ZB3P)*Y(KYB3+LYCOL,I))
 
-               IF (KYPP.GT.0) 
-     &         RY(KYPP+LYROW,I)=RY(KYPP+LYROW,I) + TTMP*(
-     &          -GF(VQ1PERE(MROW,MSA,I),VQ1PEREM(MROW,MSA,I))*
-     &           X(KXB1+LXCOL,I)    
-     &          -GF(VQ1PERE(MROW,MSA,I+1),VQ1PEREM(MROW,MSA,I))*
-     &           X(KXB1+LXCOL,I+1)    
-     &          -GG(VQ2PEREM(MROW,MSA,I),VQ2PERE(MROW,MSA,I),
-     &              VQ2PERE(MROW,MSA,I+1))*Y(KYB2+LYCOL,I)
-     &          -GG(VQ3PEREM(MROW,MSA,I),VQ3PERE(MROW,MSA,I)*ZB3M,
-     &              VQ3PERE(MROW,MSA,I+1)*ZB3P)*Y(KYB3+LYCOL,I))
-
                IF (KXDPHI.GT.0) 
-     &         RY(KYPP+LYROW,I)=RY(KYPP+LYROW,I) + TTMP*(
+     &         RY(KYPPERP+LYROW,I)=RY(KYPPERP+LYROW,I) + TTMP*(
      &          -GF(VDPPERP(MROW,MSA,I),VDPPERPM(MROW,MSA,I))*
      &           X(KXDPHI+LXCOL,I)    
      &          -GF(VDPPERP(MROW,MSA,I+1),VDPPERPM(MROW,MSA,I))*
-     &           X(KXDPHI+LXCOL,I+1))   
-
-               IF (KXDPHI.GT.0.AND.KYPP.GT.0) 
-     &         RY(KYPP+LYROW,I)=RY(KYPP+LYROW,I) + TTMP*(
-     &          -GF(VDPPERE(MROW,MSA,I),VDPPEREM(MROW,MSA,I))*
-     &           X(KXDPHI+LXCOL,I)    
-     &          -GF(VDPPERE(MROW,MSA,I+1),VDPPEREM(MROW,MSA,I))*
      &           X(KXDPHI+LXCOL,I+1))   
             ENDDO
          ENDDO
       ENDDO
 
+C     KINETIC-ELECTRON BLOCKS, ONLY WHERE THEY ARE ALLOCATED (KYPP>0)
       IF (IDIAMTE.EQ.0.AND.(IDIAMB.EQ.1.OR.IDIAMB.EQ.3)
      &    .AND.INCKIN.GT.0) THEN
       DO I=1,NR
